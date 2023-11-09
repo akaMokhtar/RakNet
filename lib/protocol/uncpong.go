@@ -1,7 +1,5 @@
 package protocol
 
-type uncpong struct {
+type uncPong struct {
 	Time       uint8
-	MAGIC      uint16
-	ClientGUID uint8
 }
