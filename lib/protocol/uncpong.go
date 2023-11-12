@@ -1,5 +1,5 @@
 package protocol
 
 type uncPong struct {
-	Time       uint8
+	Time uint8
 }
