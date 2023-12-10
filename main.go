@@ -1,67 +1,46 @@
-package server
-
+package main
 import (
-	"bufio"
-	"fmt"
-	"log"
-	"net"
+    "log"
+    "net"
+    "os"
+    "time"
 )
 
-// Server ...
-type Server struct {
-	host string
-	port string
+const (
+    HOST = "localhost"
+    PORT = "9001"
+    TYPE = "TCP"
+)
+
+func main() {
+    listen, err := net.Listen(TYPE, HOST+":"+PORT)
+    if err != nil {
+        log.Fatal(err)
+        os.Exit(1)
+    }
+    // close listener
+    defer listen.Close()
+    for {
+        conn, err := listen.Accept()
+        if err != nil {
+            log.Fatal(err)
+            os.Exit(1)
+        }
+        go handleIncomingRequest(conn)
+    }
 }
+func handleIncomingRequest(conn net.Conn) {
+    // store incoming data
+    buffer := make([]byte, 1024)
+    _, err := conn.Read(buffer)
+    if err != nil {
+        log.Fatal(err)
+    }
+    // respond
+    time := time.Now().Format("Monday, 02-Jan-06 15:04:05 MST")
+    conn.Write([]byte("Hi back!\n"))
+    conn.Write([]byte(time))
 
-// Client ...
-type Client struct {
-	conn net.Conn
-}
-
-// Config ...
-type Config struct {
-	Host string
-	Port string
-}
-
-// New ...
-func New(config *Config) *Server {
-	return &Server{
-		host: config.Host,
-		port: config.Port,
-	}
-}
-
-// Run ...
-func (server *Server) Run() {
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", server.host, server.port))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer listener.Close()
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		client := &Client{
-			conn: conn,
-		}
-		go client.handleRequest()
-	}
-}
-
-func (client *Client) handleRequest() {
-	reader := bufio.NewReader(client.conn)
-	for {
-		message, err := reader.ReadString('\n')
-		if err != nil {
-			client.conn.Close()
-			return
-		}
-		fmt.Printf("Message incoming: %s", string(message))
-		client.conn.Write([]byte("Message received.\n"))
-	}
+    // close conn
+    conn.Close()
 }
