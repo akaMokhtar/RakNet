@@ -1,50 +1,67 @@
-package main
+package server
 
 import (
-    "fmt"
-    "net"
-    "os"
+	"bufio"
+	"fmt"
+	"log"
+	"net"
 )
 
-const (
-    CONN_HOST = "127.0.0.1"
-    CONN_PORT = "19132"
-    CONN_TYPE = "tcp"
-)
-
-func main() {
-    // Listen for incoming connections.
-    l, err := net.Listen(CONN_TYPE, CONN_HOST+":"+CONN_PORT)
-    if err != nil {
-        fmt.Println("Error listening:", err.Error())
-        os.Exit(1)
-    }
-    // Close the listener when the application closes.
-    defer l.Close()
-    fmt.Println("Listening on " + CONN_HOST + ":" + CONN_PORT)
-    for {
-        // Listen for an incoming connection.
-        conn, err := l.Accept()
-        if err != nil {
-            fmt.Println("Error accepting: ", err.Error())
-            os.Exit(1)
-        }
-        // Handle connections in a new goroutine.
-        go handleRequest(conn)
-    }
+// Server ...
+type Server struct {
+	host string
+	port string
 }
 
-// Handles incoming requests.
-func handleRequest(conn net.Conn) {
-  // Make a buffer to hold incoming data.
-  buf := make([]byte, 1024)
-  // Read the incoming connection into the buffer.
-  reqLen, err := conn.Read(buf)
-  if err != nil {
-    fmt.Println("Error reading:", err.Error())
-  }
-  // Send a response back to person contacting us.
-  conn.Write([]byte("Message received."))
-  // Close the connection when you're done with it.
-  conn.Close()
+// Client ...
+type Client struct {
+	conn net.Conn
+}
+
+// Config ...
+type Config struct {
+	Host string
+	Port string
+}
+
+// New ...
+func New(config *Config) *Server {
+	return &Server{
+		host: config.Host,
+		port: config.Port,
+	}
+}
+
+// Run ...
+func (server *Server) Run() {
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", server.host, server.port))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer listener.Close()
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		client := &Client{
+			conn: conn,
+		}
+		go client.handleRequest()
+	}
+}
+
+func (client *Client) handleRequest() {
+	reader := bufio.NewReader(client.conn)
+	for {
+		message, err := reader.ReadString('\n')
+		if err != nil {
+			client.conn.Close()
+			return
+		}
+		fmt.Printf("Message incoming: %s", string(message))
+		client.conn.Write([]byte("Message received.\n"))
+	}
 }
